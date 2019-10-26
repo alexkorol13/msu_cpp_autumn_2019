@@ -18,7 +18,7 @@ int main(void)
     buf[0] = 'c';
     buf[1] = 'c';
     buf[1] += 1;
-    if (strcmp(buf, "c") != 0 || strcmp(buf+1, "d")) {
+    if (buf[0] != 'c' || buf[1] != 'd') {
         std::cout << "we can't use allocated memory\n";
     } else {
         std::cout << "we can use allocated memory, ok\n";

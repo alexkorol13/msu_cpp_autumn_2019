@@ -11,7 +11,7 @@ const char *skip_spaces(char *r)
     return r;
 }
 
-char *str_to_number(char *str, int *n)
+const char *str_to_number(const char *str, int *n)
 {
     *n = 0;
     while (isdigit(*str)) {
@@ -59,7 +59,7 @@ int calc(const char *r)
             }
         } else if (isdigit(*r)) {
             was_num = 1;
-            char *t = (char *) r;
+            const char *t = r;
             int tmp = 0;
             if (was_mul || was_div) {
                 r = str_to_number(t, &tmp);

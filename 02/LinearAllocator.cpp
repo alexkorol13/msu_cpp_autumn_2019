@@ -1,3 +1,4 @@
+#include <iostream>
 #include "LinearAllocator.h"
 
 LinearAllocator::LinearAllocator(size_t maxSize)
@@ -5,6 +6,10 @@ LinearAllocator::LinearAllocator(size_t maxSize)
     ptr = 0;
     this->maxSize = maxSize;
     buf = (char *) malloc(maxSize);
+    if (!buf) {
+        std::cout << "unable to allocate memory\n";
+        exit(1);
+    }
 }
 
 char *LinearAllocator::alloc(size_t size)
