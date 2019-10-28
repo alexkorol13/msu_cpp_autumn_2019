@@ -1,6 +1,6 @@
-#include <iostream>
 #include "LinearAllocator.h"
-
+#include <iostream>
+#include <exception>
 
 int main(void)
 {

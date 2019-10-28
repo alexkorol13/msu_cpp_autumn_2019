@@ -1,9 +1,8 @@
 #include <iostream>
-#include <stdlib.h>
 
 using namespace std;
 
-const char *skip_spaces(char *r)
+const char *skip_spaces(const char *r)
 {
     while (isspace(*r)) {
         r++;
@@ -25,7 +24,7 @@ int calc(const char *r)
 {
     int was_mul = 0, was_div = 0, was_num = 0, sign = 1, left = 0;
     while (true) {
-        r = skip_spaces((char *) r);
+        r = skip_spaces(r);
         if (*r == '+') {
             if (was_num) {
                 return left * sign + calc(r + 1);
@@ -90,7 +89,7 @@ int calc(const char *r)
 int main(int argc, char **argv)
 {
     if (argc != 2) {
-        cerr << "too many arguments\n";
+        cerr << "wrong number of arguments\n";
     } else {
         try {
             cout << calc(argv[1]) << endl;

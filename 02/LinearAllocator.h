@@ -1,17 +1,18 @@
 #ifndef LINEARALLOCATOR_H_INCLUDED
 #define LINEARALLOCATOR_H_INCLUDED
-#include <stdlib.h>
+
+#include <cstddef>
 
 class LinearAllocator
 {
 public:
-    LinearAllocator(size_t maxSize);
-    char* alloc(size_t size);
+    LinearAllocator(std::size_t maxSize);
+    char* alloc(std::size_t size);
     void reset();
     ~LinearAllocator();
 private:
-    size_t maxSize;
-    size_t ptr;
+    std::size_t maxSize;
+    std::size_t ptr;
     char *buf;
 };
 
