@@ -5,20 +5,23 @@ class Matrix {
 public:
     class Row {
     public:
-        Row(Matrix* m, int pos);
+        Row(Matrix* m, int pos, int len);
+        const int& operator[](int col) const;
+        int& operator[](int col);
         ~Row();
-        int operator[](int col);
     private:
-        Matrix* matr;
-        int pos;
+        int *row_ptr;
+        int len;
     };
     Matrix(const int rows, const int cols);
     ~Matrix();
     int getCols();
     int getRows();
-    bool operator==(const Matrix m);
-    Matrix operator*(const int n);
+    bool operator==(const Matrix& m) const;
+    bool operator!=(const Matrix& m) const;
+    Matrix& operator*=(const int n);
     Row operator[](int row);
+    const Row operator[](int row) const;
 private:
     int rows;
     int cols;

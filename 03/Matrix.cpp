@@ -1,5 +1,4 @@
 #include "matrix.h"
-#include <stdlib.h>
 #include <iostream>
 
 Matrix::Matrix(const int rows, const int cols)
@@ -7,18 +6,11 @@ Matrix::Matrix(const int rows, const int cols)
     this->rows = rows;
     this->cols = cols;
     int *m = (int *) malloc(sizeof(int) * rows * cols);
-    if (!m) {
+    if (m != nullptr) {
         this->matrix = m;
     } else {
-        std::cerr << "Unable to allocate memory\n";
-        exit(1);
+        throw std::bad_alloc();
     }
-}
-
-Matrix::Row::Row(Matrix* m, int row)
-{
-    this->pos = row;
-    this->matr = m;
 }
 
 Matrix::~Matrix()
@@ -36,12 +28,15 @@ int Matrix::getRows()
     return this->rows;
 }
 
-bool Matrix::operator==(Matrix m)
+bool Matrix::operator==(const Matrix& m) const
 {
-    if (m.getRows() != this->getRows() || m.getCols() != this->getCols()) {
+    if (this == &m) {
+        return true;
+    }
+    if (m.rows != this->rows || m.cols != this->cols) {
         return false;
     }
-    int w = this->getCols() * this->getRows();
+    int w = cols * rows;
     for (int i = 0; i < w; i++) {
         if (*(m.matrix + i) != *(this->matrix + i)) {
             return false;
@@ -50,7 +45,12 @@ bool Matrix::operator==(Matrix m)
     return true;
 }
 
-Matrix Matrix::operator*(int m)
+bool Matrix::operator!=(const Matrix& m) const
+{
+    return !(*this == m);
+}
+
+Matrix& Matrix::operator*=(int m)
 {
     int n = this->getCols() * this->getRows();
     for (int i = 0; i < n; i++) {
@@ -62,19 +62,34 @@ Matrix Matrix::operator*(int m)
 Matrix::Row Matrix::operator[](int row)
 {
     if (row >= this->getCols()) {
-        throw std::out_of_range("");
-    } else {
-        return Row(this, row);
+        throw std::out_of_range("row index out of range\n");
     }
+    return Row(this, row, cols);
+}
+
+Matrix::Row::Row(Matrix* m, int row, int len)
+{
+    if (row >= m->getRows()) {
+        throw std::out_of_range("row index out of range\n");
+    }
+    this->row_ptr = m->matrix + len * row;
+    this->len = len;
 }
 
 Matrix::Row::~Row() {}
 
-int Matrix::Row::operator[](int col)
+int& Matrix::Row::operator[](int col)
 {
-    if (col >= matr->getCols()) {
-        throw std::out_of_range("");
-    } else {
-        return *((int *)this->matr + this->pos * this->matr->getCols() + col);
+    if (col >= this->len) {
+        throw std::out_of_range("column index out of range\n");
     }
+    return this->row_ptr[col];
+}
+
+const int& Matrix::Row::operator[](int col) const
+{
+    if (col >= this->len) {
+        throw std::out_of_range("column index out of range\n");
+    }
+    return this->row_ptr[col];
 }
