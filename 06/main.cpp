@@ -4,12 +4,15 @@
 #include "string_format.h"
 
 #define checkEqual(x, y) \
-    do { \
+    try { \
         if ((x) != (y)) \
         { \
             std::cout << "at line " << __LINE__ << ": " << (x) << " != " << (y) << '\n'; \
         }; \
-    } while(0)
+    } catch(const exception& e) \
+        { \
+            std::cout << e.what() << " at line " << __LINE__ << endl; \
+        }
 
 #define checkThrow(x) \
     do { \
@@ -29,7 +32,7 @@ std::ostream& operator<<(std::ostream& out, const Test&)
     return out;
 }
 
-int main()
+int main(void)
 {
     checkEqual(format(""), "");
     checkEqual(format("1"), "1");
