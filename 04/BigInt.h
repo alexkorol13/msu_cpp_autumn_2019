@@ -1,24 +1,27 @@
-#ifndef BIGINT_H_INCLUDED
-#define BIGINT_H_INCLUDED
+#pragma once
 
 class BigInt {
-    BigInt(int n);
-    BigInt(const BigInt& n);
+    char *arr;
+    size_t size;
+    bool is_zero;
+    bool is_neg;
+    BigInt(char *m, size_t s, bool sign);
+public:
+    BigInt(long long x);
+    BigInt();
+    BigInt(const BigInt &val);
+    BigInt(BigInt&& val);
     ~BigInt();
-    const bool operator==(BigInt c) const;
-    const bool operator!=(BigInt c) const;
-    const bool operator<=(BigInt c) const;
-    const bool operator>=(BigInt c) const;
-    const bool operator>(BigInt c) const;
-    const bool operator<(BigInt c) const;
-    BigInt operator+(BigInt c);
-    BigInt operator+=(BigInt c);
-    BigInt operator-=(BigInt c);
-    BigInt operator-(BigInt c);
-    BigInt sum(BigInt a, BigInt b, int s);
-    void shift();
-    BigInt operator=(BigInt c);
-    BigInt operator=(int c);
+    BigInt &operator=(const BigInt &val);
+    BigInt &operator=(BigInt&& val);
+    friend std::ostream& operator<<(std::ostream& out, const BigInt& val);
+    BigInt operator+(const BigInt& val) const;
+    BigInt operator-(const BigInt& val) const;
+    BigInt operator-() const;
+    bool operator==(const BigInt& val) const;
+    bool operator!=(const BigInt& val) const;
+    bool operator<(const BigInt& val) const;
+    bool operator>(const BigInt& val) const;
+    bool operator>=(const BigInt& val) const;
+    bool operator<=(const BigInt& val) const;
 };
-
-#endif // BIGINT_H_INCLUDED

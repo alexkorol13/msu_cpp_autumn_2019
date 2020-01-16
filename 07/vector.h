@@ -29,7 +29,7 @@ class Allocator
         ptr->~T();
     }
 
-    void free_(T* ptr, size_t count) {
+    void free_(T* ptr) {
         free(ptr);
     }
 
@@ -256,7 +256,6 @@ public:
 
     }
 
-
 	void resize(size_t new_size)
 	{
         if (new_size > capacity_) {
@@ -284,7 +283,7 @@ public:
 	{
 		if (size_ == capacity_)
 			reserve(capacity_ * 2);
-		alloc_.construct(buffer + size_, std::move(el));
+		alloc_.constructor(buffer + size_, std::move(el));
 		size_++;
 	}
 

@@ -1,165 +1,310 @@
+#include <iostream>
+#include <math.h>
 #include "BigInt.h"
 
-BigInt::BigInt(const BigInt n) {
-    this.data = n.data
-    this.len = n.len
-    this.sign = n.sign
+using namespace std;
+
+BigInt::BigInt() : size(1), is_neg(false), is_zero(true) {
+    arr = new char[1]();
 }
 
-BigInt::BigInt(int n) {
-    size_t len = 0;
-    if (n > 0) {
-        this.sign = 1;
-    } else if (n < 0) {
-        this.sign = -1
+BigInt::BigInt(long long n) {
+    is_neg = false;
+    if (n < 0) {
+        is_neg = true;
+        n = -n;
+    }
+    is_zero = false;
+    if (n == 0) {
+        arr = new char[1]();
+        size = 1;
+        is_zero = true;
     } else {
-        this.sign = 0;
-    }
-    char *data = (char *) malloc(10 * sizeof(int));
-    size_t max_len = 10;
-    while (n != 0) {
-        char cur = '0' + n % 10;
-        n /= 10;
-        len++;
-        if (len > max_len) {
-            char *tmp = data;
-            data = (char *) realloc((void *) data, 2 * max_len);
-            max_len *= 2;
+        size = 0;
+        arr = new char[20]();
+        while (n > 0) {
+            arr[size] = n % 10;
+            size++;
+            n /= 10;
         }
-        data[len - 1] = cur;
     }
-    this.data = data;
-    this.len = len;
+}
+
+BigInt::BigInt(char *m, size_t s, bool sign) : arr(m), size(s), is_neg(sign) {
+    is_zero = ((size == 1) && (arr[0] == 0));
+}
+
+BigInt::BigInt(const BigInt &val) : arr(new char[val.size]), is_neg(val.is_neg), size(val.size), is_zero(val.is_zero) {
+    std::copy(val.arr, val.arr + size, arr);
+}
+
+BigInt::BigInt(BigInt &&val) : size(val.size), is_neg(val.is_neg), is_zero(val.is_zero) {
+    delete[] arr;
+    arr = val.arr;
+    val.arr = nullptr;
+    val.size = 0;
 }
 
 BigInt::~BigInt() {
-    free(this.data);
+    delete[] arr;
 }
 
-BigInt operator=(int n) {
-    size_t len = 0;
-    if (n > 0) {
-        this.sign = 1;
-    } else if (n < 0) {
-        this.sign = -1
-    } else {
-        this.sign = 0;
+std::ostream &operator<<(std::ostream &out, const BigInt &val) {
+    if (val.is_zero) {
+        out << "0";
+        return out;
     }
-    char *data = (char *) malloc(10 * sizeof(int));
-    size_t max_len = 10;
-    data[0] = '0';
-    while (n != 0) {
-        char cur = '0' + n % 10;
-        n /= 10;
-        len++;
-        if (len > max_len) {
-            char *tmp = data;
-            data = (char *) realloc((void *) data, 2 * max_len);
-            max_len *= 2;
+    if (val.is_neg) {
+        out << '-';
+    }
+    for (int i = val.size - 1; i >= 0; i--) {
+        out << int(val.arr[i]);
+    }
+    return out;
+}
+
+BigInt &BigInt::operator=(const BigInt &val) {
+    if (val == *this) {
+        return *this;
+    }
+    char *tmp = new char[val.size];
+    delete[] arr;
+    arr = tmp;
+    size = val.size;
+    is_zero = val.is_zero;
+    std::copy(val.arr, val.arr + size, arr);
+    return *this;
+}
+
+BigInt &BigInt::operator=(BigInt &&val) {
+    if (*this == val) {
+        return *this;
+    }
+    delete[] arr;
+    arr = val.arr;
+    size = val.size;
+    is_neg = val.is_neg;
+    is_zero = val.is_zero;
+    val.arr = nullptr;
+    val.size = 0;
+    return *this;
+}
+
+bool BigInt::operator==(const BigInt &val) const {
+    if (size != val.size) {
+        return false;
+    }
+    if (is_zero && val.is_zero) {
+        return true;
+    }
+    if (is_neg != val.is_neg) {
+        return false;
+    }
+    for (int i = size - 1; i >= 0; i--) {
+        if (arr[i] != val.arr[i]) {
+            return false;
         }
-        data[len - 1] = cur;
     }
-    this.data = data;
-    this.len = len;
+    return true;
 }
 
-BigInt::operator=(const BigInt n) {
-    this.len = n.len;
-    this.sign = n.sign;
-    this.data = n.data;
+bool BigInt::operator!=(const BigInt &val) const {
+    return !(*this == val);
 }
 
-const bool BigInt::operator==(const BigInt c) const {
-    if (c.sign == this.sign && c.len == this.len) {
-        for (size_t i = 0; i < c.len; i++) {
-            if(this.data[i] != c.data[i]) { return false; }
+bool BigInt::operator<=(const BigInt &val) const {
+    if (*this == val) {
+        return true;
+    }
+    if (val.is_neg && !is_neg) {
+        return false;
+    }
+    if (!val.is_neg && is_neg) {
+        return true;
+    }
+    if (!val.is_neg && !is_neg) {
+        if (val.size > size) {
+            return true;
+        }
+        if (val.size < size) {
+            return false;
+        }
+        for (int i = size - 1; i >= 0; i--) {
+            if (arr[i] > val.arr[i]) {
+                return false;
+            } else if (arr[i] < val.arr[i]) {
+                return true;
+            }
+        }
+        return true;
+    } else if (val.is_neg && is_neg) {
+        if (val.size > size) {
+            return false;
+        }
+        if (val.size < size) {
+            return true;
+        }
+        for (int i = size - 1; i >= 0; i--) {
+            if (arr[i] > val.arr[i]) {
+                return true;
+            } else if (arr[i] < val.arr[i]) {
+                return false;
+            }
         }
         return true;
     }
     return false;
 }
 
-const bool BigInt::operator>(const BigInt c) const {
-    if(this.sign != c.sign) { return this.sign > c.sign; }
-    if(this.sign == 1) {
-        if(this.len != c.len) { return  this.len > c.len; }
-        for (size_t i = len - 1; i >= 0; i--) {
-            if(this.data[i] != c.data[i]) {
-                return (this.data[i] > c.data[i]);
-            }
-        }
-        return false;
-    } else if(this.sign == -1) {
-        if(this.len != c.len) { return  this.len < c.len; }
-        for (size_t i = len - 1; i >= 0; i--) {
-            if(this.data[i] != c.data[i]) {
-                return (this.data[i] < c.data[i]);
-            }
-        }
-        return false;
+bool BigInt::operator>(const BigInt &val) const {
+    return !(*this <= val);
+}
+
+bool BigInt::operator>=(const BigInt &val) const {
+    return (*this > val || *this == val);
+}
+
+bool BigInt::operator<(const BigInt &val) const {
+    return !(*this >= val);
+}
+
+BigInt BigInt::operator+(const BigInt& val) const {
+    if (!is_neg && val.is_neg) {
+        auto tmp = -val;
+        return (*this).operator-(tmp);
     }
-    return false;
-}
-
-const bool BigInt::operator>=(const BigInt c) const {
-    return this.operator>(c) || this.operator==(c);
-}
-
-const bool BigInt::operator<(const BigInt c) const {
-    return !this.operator>=(c);
-}
-
-const bool BigInt::operator<=(const BigInt c) const {
-    return !this.operator>(c);
-}
-
-const bool BigInt::operator!=(const BigInt c) const {
-    return !this.operator==(c);
-}
-
-BigInt BigInt::operator+(BigInt c) {
-    BigInt tmp(sum(this, c, 1));
-    return tmp;
-}
-
-BigInt BigInt::operator-(BigInt c) {
-    BigInt tmp(sum(this, c, -1));
-    return tmp;
-}
-
-void BigInt::operator+=(const BigInt c) {
-    this.data = sum(this, c, 1).data;
-}
-
-void BigInt::operator-=(const BigInt c) {
-    this.data = sum(this, c, -1).data;
-}
-
-BigInt BigInt::sum(const BigInt main, const BigInt add, const int sign)
-{
-    int s = main.sign * add.sign * sign;
-    if (main.len >= add.len) {
-        BigInt tmp(main);
-        for (size_t i = 0; i < add.len; i++) {
-            tmp.data[i] += s * (add.data[i] - '0');
-        }
+    if (is_neg && !val.is_neg) {
+        auto tmp = -(*this);
+        return val.operator-(tmp);
+    }
+    int max_size = 0;
+    int min_size = 0;
+    if (size >= val.size) {
+        max_size = size;
+        min_size = val.size;
     } else {
-        BigInt tmp(add);
-        for (size_t i = 0; i < main.len; i++) {
-            tmp.data[i] += s * (main.data[i] - '0');
+        max_size = val.size;
+        min_size = size;
+    }
+    char to_add = 0;
+    char *res = new char[max_size + 1]();
+    for (int i = 0; i < min_size; i++) {
+        res[i] = (arr[i] + val.arr[i] + to_add) % 10;
+        to_add = (arr[i] + val.arr[i] + to_add) / 10;
+    }
+    for (int i = min_size; i < max_size; i++) {
+        if (max_size == size) {
+            res[i] = (arr[i] + to_add) % 10;
+            to_add = (arr[i] + to_add) / 10;
+        } else {
+            res[i] = (val.arr[i] + to_add) % 10;
+            to_add = (val.arr[i] + to_add) / 10;
         }
     }
-    tmp.shift();
-    return tmp;
+    int total = max_size;
+    if (to_add > 0) {
+        res[max_size] = to_add;
+        total++;
+    }
+    return BigInt(res, total, is_neg);
 }
 
-void BigInt::shift()
-{
-    char shift = 0;
-    for (size_t i = 0; i < this.len; i++) {
-        shift = (this.data[i] - '0' + 10) / 10 - 1;
-        if (shift == -1) {
-            this.data[i] += 10;
+BigInt BigInt::operator-(const BigInt& val) const {
+    if (is_neg && val.is_neg) {
+        auto tmp1 = -(*this);
+        auto tmp2 = -val;
+        return -(tmp1 - tmp2);
+    }
+    if (is_neg && !val.is_neg) {
+        auto tmp = -(*this);
+        return -(val.operator+(tmp));
+    }
+    if (!is_neg && val.is_neg) {
+        auto tmp = -val;
+        return (*this).operator+(tmp);
+    }
+    if (size > val.size) {
+        char *res = new char[size]();
+        int to_add = 0;
+        for (int i = 0; i < val.size; i++) {
+            res[i] = arr[i] - val.arr[i] - to_add;
+            to_add = 0;
+            if (res[i] < 0) {
+                res[i] += 10;
+                to_add = 1;
+            }
+        }
+        for (int i = val.size; i < size; i++) {
+            res[i] = arr[i] - to_add;
+            to_add = 0;
+            if (res[i] < 0) {
+                res[i] += 10;
+                to_add = 1;
+            }
+        }
+        int total = size - 1;
+        for (; res[total] == 0; total--);
+        return BigInt(res, total + 1, false);
+    } else if (val.size > size) {
+        char *res = new char[val.size]();
+        int to_add = 0;
+        for (int i = 0; i < size; i++) {
+            res[i] = val.arr[i] - arr[i] - to_add;
+            to_add = 0;
+            if (res[i] < 0) {
+                res[i] += 10;
+                to_add = 1;
+            }
+        }
+        for (int i = size; i < val.size; i++) {
+            res[i] = val.arr[i] - to_add;
+            to_add = 0;
+            if (res[i] < 0) {
+                res[i] += 10;
+                to_add = 1;
+            }
+        }
+        int total = val.size - 1;
+        for (; res[total] == 0; total--);
+        return BigInt(res, total + 1, true);
+    } else {
+        if (*this == val) {
+            return BigInt(0);
+        }
+        if (*this > val) {
+            char *res = new char[size]();
+            int to_add = 0;
+            for (int i = 0; i < size; i++) {
+                res[i] = arr[i] - val.arr[i] - to_add;
+                to_add = 0;
+                if (res[i] < 0) {
+                    res[i] += 10;
+                    to_add = 1;
+                }
+            }
+            int total = size - 1;
+            for (; res[total] == 0; total--);
+            return BigInt(res, total + 1, false);
+        } else {
+            char *res = new char[size]();
+            int to_add = 0;
+            for (int i = 0; i < size; i++) {
+                res[i] = val.arr[i] - arr[i] - to_add;
+                to_add = 0;
+                if (res[i] < 0) {
+                    res[i] += 10;
+                    to_add = 1;
+                }
+            }
+            int total = size - 1;
+            for (; res[total] == 0; total--);
+            return BigInt(res, total + 1, true);
         }
     }
+}
+
+BigInt BigInt::operator-() const {
+    BigInt tmp(*this);
+    tmp.is_neg = !tmp.is_neg;
+    return tmp;
 }
