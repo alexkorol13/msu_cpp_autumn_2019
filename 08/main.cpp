@@ -1,24 +1,12 @@
 #include <iostream>
-#include <functional>
+#include <cassert>
+#include "ThreadPool.h"
 
-using namespace std;
+struct A {};
 
-class ThreadPool
-{
-public:
-    explicit ThreadPool(size_t poolSize);
+void foo(const A&) {}
 
-     // pass arguments by value
-    template <class Func, class... Args>
-    auto exec(Func func, Args... args) -> std::future<decltype(func(args...))>;
-};
-
-int main(void)
-{
-    /*
-    struct A {};
-
-    void foo(const A&) {}
+int main() {
 
     ThreadPool pool(8);
 
@@ -26,8 +14,9 @@ int main(void)
     task1.get();
 
     auto task2 = pool.exec([]() { return 1; });
-    task2.get();
-    */
-    cout << "Hello world!" << endl;
+    assert(task2.get() == 1);
+
+    std::cout << "Done" << std::endl;
+
     return 0;
 }
