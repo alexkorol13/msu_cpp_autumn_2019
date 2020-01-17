@@ -1,16 +1,13 @@
 all: prog
 
-prog: main.o
-	g++ -o prog
+prog: test.o Vector.h
+	g++ -o prog test.o Vector.h
 
-main.o: main.cpp
-	g++ main.cpp -c --std=c++14 -O2
+test.o: test.cpp Vector.h
+	g++ -c -O2 -std=c++14 test.cpp
 
-test: test.o
-	g++ -o prog
-
-test.o:
-	g++ test.cpp -c --std=c++14 -O2
+test:
+	./prog
 
 clean:
 	rm -rf *.o prog

@@ -1,304 +1,252 @@
-#include <stdint.h>
-#include <iterator>
-#include <iostream>
-#include <cstring>
-
 #pragma once
 
-template<class T>
-class Allocator
-{
-    void constructor(T* ptr) {
-        new (ptr) T();
+#include <iterator>
+#include <exception>
+#include <cstring>
+#include <limits>
+
+using namespace std;
+
+template <class T>
+class Allocator {
+public:
+    T *alloc(size_t size) {
+        T *pointer = (T*) malloc(size * sizeof(T));
+        if (pointer == nullptr) {
+            throw bad_alloc();
+        }
+        return pointer;
     }
 
-    void constructor(T* ptr, const T& x) {
-        new (ptr) T(x);
+    template<class... Args>
+    void creat(T *pointer, size_t size, const Args&... val) {
+        for (size_t i = 0; i < size; i++) {
+            new (pointer + i) T(val...);
+        }
     }
 
-    void constructor(T* ptr, T&& x) {
-        new (ptr) T(std::move(x));
+    template<class Arg>
+    void creat(T *pointer, Arg&& val) {
+        new (pointer) T(forward<Arg>(val));
     }
 
-    T* alloc(size_t count) {
-        T* ptr = static_cast<T*>(malloc(count* sizeof(count)));
-        return ptr;
+    void destroy(T *pointer, size_t size) {
+        for (size_t i = 0; i < size; i++) {
+            (pointer[i]).~T();
+        }
     }
 
-    void destroy (T* ptr) {
-        ptr->~T();
+    void finish(T *pointer, size_t size) {
+        free(pointer);
     }
 
-    void free_(T* ptr) {
-        free(ptr);
+    size_t max_size() const noexcept {
+        return numeric_limits<size_t>::max() / sizeof(T);
     }
-
-    T* ptr;
 };
 
-
-template <typename T>
-class Iterator : public std::iterator<std::forward_iterator_tag, T>
-{
+template <class T>
+class Iterator {
+    T *pointer;
+    bool rev_flag;
 public:
-    explicit Iterator(T* ptr) : ptr(ptr) {};
+    explicit Iterator(T *ptr, bool if_rev) : pointer(ptr), rev_flag(if_rev) {}
 
-    bool operator==(const Iterator<T>& iter)
-    {
-        return ptr == iter;
+    T& operator*() const {
+        return *pointer;
     }
 
-    bool operator!=(const Iterator<T>& iter)
-    {
-        return ptr != iter;
+    bool operator==(const Iterator<T>& cmp) const {
+        return (pointer == cmp.pointer) && (rev_flag == cmp.rev_flag);
     }
 
-    T operator+(const T& arg)
-    {
-        return ptr + arg;
+    bool operator!=(const Iterator<T>& cmp) const {
+        return !(*this == cmp);
     }
 
-    T operator-(const T& arg)
-    {
-        return ptr - arg;
+    Iterator operator+(size_t size) {
+        Iterator iter(pointer, rev_flag);
+        iter += size;
+        return iter;
     }
 
-    T operator++(const T& arg)
-    {
-        ptr++;
+    Iterator operator-(size_t size) {
+        Iterator iter(pointer, rev_flag);
+        iter -= size;
+        return iter;
+    }
+
+    Iterator& operator++() {
+        pointer = (rev_flag) ? (pointer - 1) : (pointer + 1);
         return *this;
     }
 
-    T operator--(const T& arg)
-    {
-        ptr--;
+    Iterator& operator--() {
+        pointer = (rev_flag) ? (pointer + 1) : (pointer - 1);
         return *this;
     }
 
-    T* operator*()
-    {
-        return *ptr;
+    Iterator& operator+=(size_t size) {
+        pointer = (rev_flag) ? (pointer - size) : (pointer + size);
+        return *this;
     }
 
-private:
-    T* ptr;
+    Iterator& operator-=(size_t size) {
+        pointer = (rev_flag) ? (pointer + size) : (pointer - size);
+        return *this;
+    }
+
+    Iterator operator++(int) {
+        Iterator iter(pointer, rev_flag);
+        pointer = (rev_flag) ? (pointer - 1) : (pointer + 1);
+        return iter;
+    }
+
+    Iterator operator--(int) {
+        Iterator iter(pointer, rev_flag);
+        pointer = (rev_flag) ? (pointer + 1) : (pointer - 1);
+        return iter;
+    }
 };
 
-
-template<typename T>
-class reversed_iterator
-{
-    public:
-        reversed_iterator(T* ptr) :
-            ptr(ptr)
-        { }
-
-        T& operator*()
-        {
-            return *ptr;
-        }
-
-        const T& operator*() const
-        {
-            return *ptr;
-        }
-
-        reversed_iterator& operator++()
-        {
-            ptr--;
-            return *this;
-        }
-
-        reversed_iterator& operator--()
-        {
-            ptr++;
-            return *this;
-        }
-
-        reversed_iterator operator++(int)
-        {
-            reversed_iterator iter(ptr);
-            ptr--;
-            return iter;
-        }
-
-        reversed_iterator operator--(int)
-        {
-            reversed_iterator iter(ptr);
-            ptr++;
-            return iter;
-        }
-
-        reversed_iterator operator+(size_t add) const
-        {
-            return reversed_iterator(ptr - add);
-        }
-
-        reversed_iterator operator-(size_t m) const
-        {
-            return reversed_iterator(ptr + m);
-        }
-
-        bool operator==(const reversed_iterator<T> &other)
-        {
-            return ptr == other.ptr;
-        }
-
-        bool operator!=(const reversed_iterator<T> &other) const
-        {
-            return ptr != other.ptr;
-        }
-    private:
-        T* ptr;
-};
-
-
-template <class T, class Alloc = Allocator<T>>
-class Vector
-{
-private:
-	T* buffer;
-	size_t size_;
-	size_t capacity_;
-    Alloc alloc_;
-
+template <class T>
+class Vector{
+    T *arr;
+    Allocator<T> allocator;
+    size_t cur_size;
+    size_t cur_vol;
 public:
-	Vector(size_t capacity = 10) :
-		capacity_(capacity), size_(0)
-	{
-		buffer = alloc_.alloc(capacity_);
-	}
-
-	~Vector()
-	{
-		for(int i = 0; i < size_; i++) {
-			alloc_.destroy(buffer+i);
-		}
-		alloc_.free_(buffer);
-		size_ = 0;
-		capacity_ = 0;
-	}
-
-	Iterator<T> begin()
-	{
-		return Iterator<T>(buffer);
-	}
-
-	const Iterator<T> begin() const
-	{
-		return Iterator<T>(buffer);
-	}
-
-	reversed_iterator<T> rbegin()
-	{
-		return reversed_iterator<T>(buffer + size_ - 1);
-	}
-
-	const reversed_iterator<T> rbegin() const
-	{
-		return reversed_iterator<T>(buffer + size_ - 1);
-	}
-
-	Iterator<T> end()
-	{
-		return Iterator<T>(buffer + size_);
-	}
-
-	const Iterator<T> end() const
-	{
-		return Iterator<T>(buffer + size_ );
-	}
-
-	reversed_iterator<T> rend()
-	{
-		return reversed_iterator<T>(buffer - 1);
-	}
-
-	const reversed_iterator<T> rend() const
-	{
-		return reversed_iterator<T>(buffer - 1);
-	}
-
-	size_t size() const
-	{
-		return size_;
-	}
-
-	bool empty() const
-	{
-		return (size_ == 0);
-	}
-
-	T& operator[](size_t i)
-	{
-		if (i >= size_)
-			throw std::out_of_range ("check operator[]");
-		return buffer[i];
-	}
-
-	const T& operator[](size_t i) const
-	{
-		if (i >= size_)
-			throw std::out_of_range ("check operator[]");
-		return buffer[i];
-	}
-
-    void reserve(size_t new_capacity)
+    Vector()
     {
-
-		if (capacity_ < new_capacity) {
-			T* new_data = alloc_.alloc(new_capacity);
-			std::memcpy(new_data, buffer, size_ * sizeof(T));
-			std::swap(buffer, new_data);
-			alloc_.free_(new_data);
-			capacity_ = new_capacity;
-		}
-
+        allocator = Allocator<T>();
+        arr = nullptr;
+        cur_size = 0;
+        cur_vol = 0;
     }
 
-	void resize(size_t new_size)
-	{
-        if (new_size > capacity_) {
-            reserve(new_size);
+    template<class... Args>
+    explicit Vector(size_t size, const Args&... val)
+    {
+        allocator = Allocator<T>();
+        arr = allocator.alloc(size);
+        allocator.creat(arr, size, val...);
+        cur_size = size;
+        cur_vol = size;
+    }
+
+    ~Vector()
+    {
+        allocator.destroy(arr, cur_size);
+        allocator.finish(arr, cur_vol);
+    }
+
+    T &operator[](size_t index)
+    {
+        return arr[index];
+    }
+
+    const T &operator[](size_t index) const
+    {
+        return arr[index];
+    }
+
+    void reserve(size_t required)
+    {
+        if (required > cur_vol) {
+            T *new_data = allocator.alloc(required);
+            memcpy(new_data, arr, cur_size * sizeof(T));
+            allocator.finish(arr, cur_vol);
+            arr = new_data;
+            cur_vol = required;
         }
+    }
 
-        for(int i = size_; i < new_size; i++)
-            alloc_.construct(buffer + i);
+    bool empty()
+    {
+        return cur_size == 0;
+    }
 
-        for(int i = new_size; i < size_; i++)
-            alloc_.destroy(buffer + i);
+    void clear() noexcept
+    {
+        allocator.destroy(arr, cur_size);
+        cur_size = 0;
+    }
 
-        size_ = new_size;
-	}
+    template<class... Args>
+    void resize(size_t new_size, const Args&... val)
+    {
+        if (new_size > cur_size) {
+            if (new_size > cur_vol) {
+                T *new_data = allocator.alloc(new_size);
+                memcpy(new_data, arr, cur_size * sizeof(T));
+                allocator.finish(arr, cur_vol);
+                arr = new_data;
+                cur_vol = new_size;
+            }
+            allocator.creat(arr + cur_size, new_size - cur_size, val...);
+            cur_size = new_size;
+        } else if (new_size < cur_size) {
+            allocator.destroy(arr + new_size, cur_size - new_size);
+            cur_size = new_size;
+        }
+    }
 
-	void push_back(const T& el)
-	{
-		if (size_ == capacity_)
-			reserve(capacity_ * 2);
-		alloc_.construct(buffer + size_, el);
-		size_++;
-	}
+    size_t size()
+    {
+        return cur_size;
+    }
 
-	void push_back(T&& el)
-	{
-		if (size_ == capacity_)
-			reserve(capacity_ * 2);
-		alloc_.constructor(buffer + size_, std::move(el));
-		size_++;
-	}
+    size_t capacity()
+    {
+        return cur_vol;
+    }
 
-	void pop_back()
-	{
-		resize(size_-1);
-	}
+    Iterator<T> begin() noexcept
+    {
+        return Iterator<T>(arr, false);
+    }
 
-	void clear()
-	{
-		resize(0);
-	}
+    Iterator<T> rbegin() noexcept
+    {
+        return Iterator<T>(arr + cur_size - 1, true);
+    }
 
-	size_t capacity()
-	{
-		return capacity_;
-	}
+    Iterator<T> end() noexcept
+    {
+        return Iterator<T>(arr + cur_size, false);
+    }
+
+    Iterator<T> rend() noexcept
+    {
+        return Iterator<T>(arr - 1, true);
+    }
+
+    template<class Arg>
+    void push_back(Arg&& val)
+    {
+        if (cur_vol == 0) {
+            arr = allocator.alloc(1);
+            allocator.creat(arr, forward<Arg>(val));
+            cur_size = 1;
+            cur_vol = 1;
+        } else if (cur_size < cur_vol) {
+            allocator.creat(arr + cur_size, forward<Arg>(val));
+            cur_size++;
+        } else if (cur_size == cur_vol) {
+            size_t new_vol = cur_vol * 2;
+            T *new_data = allocator.alloc(new_vol);
+            memcpy(new_data, arr, cur_size * sizeof(T));
+            allocator.finish(arr, cur_vol);
+            cur_vol = new_vol;
+            arr = new_data;
+            allocator.creat(arr + cur_size, forward<Arg>(val));
+            cur_size++;
+        }
+    }
+
+    void pop_back()
+    {
+        cur_size--;
+        allocator.destroy(arr + cur_size, 1);
+    }
 };
