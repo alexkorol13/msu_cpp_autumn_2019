@@ -5,45 +5,45 @@
 #include <cstring>
 #include <limits>
 
-using namespace std;
 
 template <class T>
 class Allocator {
 public:
-    T *alloc(size_t size) {
+    T *alloc(std::size_t size) {
         T *pointer = (T*) malloc(size * sizeof(T));
         if (pointer == nullptr) {
-            throw bad_alloc();
+            throw std::bad_alloc();
         }
         return pointer;
     }
 
     template<class... Args>
-    void creat(T *pointer, size_t size, const Args&... val) {
-        for (size_t i = 0; i < size; i++) {
+    void construct(T *pointer, std::size_t size, const Args&... val) {
+        for (std::size_t i = 0; i < size; i++) {
             new (pointer + i) T(val...);
         }
     }
 
     template<class Arg>
-    void creat(T *pointer, Arg&& val) {
-        new (pointer) T(forward<Arg>(val));
+    void construct(T *pointer, Arg&& val) {
+        new (pointer) T(std::forward<Arg>(val)); ///3
     }
 
-    void destroy(T *pointer, size_t size) {
-        for (size_t i = 0; i < size; i++) {
+    void destroy(T *pointer, std::size_t size) {
+        for (std::size_t i = 0; i < size; i++) {
             (pointer[i]).~T();
         }
     }
 
-    void finish(T *pointer, size_t size) {
+    void finish(T *pointer, std::size_t size) {
         free(pointer);
     }
 
-    size_t max_size() const noexcept {
-        return numeric_limits<size_t>::max() / sizeof(T);
+    std::size_t max_size() const noexcept {
+        return std::numeric_limits<size_t>::max() / sizeof(T);
     }
 };
+
 
 template <class T>
 class Iterator {
@@ -64,13 +64,13 @@ public:
         return !(*this == cmp);
     }
 
-    Iterator operator+(size_t size) {
+    Iterator operator+(std::size_t size) {
         Iterator iter(pointer, rev_flag);
         iter += size;
         return iter;
     }
 
-    Iterator operator-(size_t size) {
+    Iterator operator-(std::size_t size) {
         Iterator iter(pointer, rev_flag);
         iter -= size;
         return iter;
@@ -86,12 +86,12 @@ public:
         return *this;
     }
 
-    Iterator& operator+=(size_t size) {
+    Iterator& operator+=(std::size_t size) {
         pointer = (rev_flag) ? (pointer - size) : (pointer + size);
         return *this;
     }
 
-    Iterator& operator-=(size_t size) {
+    Iterator& operator-=(std::size_t size) {
         pointer = (rev_flag) ? (pointer + size) : (pointer - size);
         return *this;
     }
@@ -109,12 +109,13 @@ public:
     }
 };
 
+
 template <class T>
 class Vector{
     T *arr;
     Allocator<T> allocator;
-    size_t cur_size;
-    size_t cur_vol;
+    std::size_t cur_size;
+    std::size_t cur_vol;
 public:
     Vector()
     {
@@ -124,15 +125,17 @@ public:
         cur_vol = 0;
     }
 
+
     template<class... Args>
-    explicit Vector(size_t size, const Args&... val)
+    explicit Vector(std::size_t size, const Args&... val)
     {
         allocator = Allocator<T>();
         arr = allocator.alloc(size);
-        allocator.creat(arr, size, val...);
+        allocator.construct(arr, size, val...);
         cur_size = size;
         cur_vol = size;
     }
+
 
     ~Vector()
     {
@@ -140,31 +143,41 @@ public:
         allocator.finish(arr, cur_vol);
     }
 
-    T &operator[](size_t index)
+
+    T &operator[](std::size_t index)
     {
         return arr[index];
     }
 
-    const T &operator[](size_t index) const
+
+    const T &operator[](std::size_t index) const
     {
         return arr[index];
     }
 
-    void reserve(size_t required)
+
+    void reserve(std::size_t new_vol)
     {
-        if (required > cur_vol) {
-            T *new_data = allocator.alloc(required);
-            memcpy(new_data, arr, cur_size * sizeof(T));
-            allocator.finish(arr, cur_vol);
-            arr = new_data;
-            cur_vol = required;
+        if (new_vol > cur_vol)
+        {
+            T *new_arr = allocator.alloc(new_vol);
+            for (std::size_t i = 0; i < cur_size; i++)
+            {
+                allocator.construct(new_arr + i, std::move(arr[i]));
+            }
+            allocator.destroy(arr, cur_size);
+            allocator.finish(arr, cur_vol); /// ??
+            cur_vol = new_vol;
+            arr = new_arr; /// ??
         }
     }
+
 
     bool empty()
     {
         return cur_size == 0;
     }
+
 
     void clear() noexcept
     {
@@ -172,77 +185,96 @@ public:
         cur_size = 0;
     }
 
+
     template<class... Args>
-    void resize(size_t new_size, const Args&... val)
+    void resize(std::size_t new_size, const Args&... val)
     {
-        if (new_size > cur_size) {
-            if (new_size > cur_vol) {
-                T *new_data = allocator.alloc(new_size);
-                memcpy(new_data, arr, cur_size * sizeof(T));
-                allocator.finish(arr, cur_vol);
-                arr = new_data;
-                cur_vol = new_size;
-            }
-            allocator.creat(arr + cur_size, new_size - cur_size, val...);
-            cur_size = new_size;
-        } else if (new_size < cur_size) {
+        if (new_size < cur_size)
+        {
             allocator.destroy(arr + new_size, cur_size - new_size);
+            cur_size = new_size;
+        }
+
+        else if (new_size > cur_size)
+        {
+            if (new_size > cur_vol)
+            {
+                T *new_arr = allocator.alloc(new_size);
+                for (size_t i = 0; i < cur_size; i++)
+                {
+                    allocator.construct(new_arr + i, std::move(arr[i]));
+                }
+                allocator.destroy(arr, cur_size);
+                allocator.finish(arr, cur_vol);
+                arr = new_arr;
+                cur_size = new_size;
+            }
+            allocator.construct(arr + cur_size, new_size - cur_size, val...);
             cur_size = new_size;
         }
     }
 
-    size_t size()
+
+    std::size_t size()
     {
         return cur_size;
     }
 
-    size_t capacity()
+
+    std::size_t capacity()
     {
         return cur_vol;
     }
+
 
     Iterator<T> begin() noexcept
     {
         return Iterator<T>(arr, false);
     }
 
+
     Iterator<T> rbegin() noexcept
     {
         return Iterator<T>(arr + cur_size - 1, true);
     }
+
 
     Iterator<T> end() noexcept
     {
         return Iterator<T>(arr + cur_size, false);
     }
 
+
     Iterator<T> rend() noexcept
     {
         return Iterator<T>(arr - 1, true);
     }
 
+
     template<class Arg>
-    void push_back(Arg&& val)
-    {
+    void push_back(Arg&& value) {
         if (cur_vol == 0) {
             arr = allocator.alloc(1);
-            allocator.creat(arr, forward<Arg>(val));
+            allocator.construct(arr, std::move(value));
             cur_size = 1;
             cur_vol = 1;
-        } else if (cur_size < cur_vol) {
-            allocator.creat(arr + cur_size, forward<Arg>(val));
-            cur_size++;
-        } else if (cur_size == cur_vol) {
-            size_t new_vol = cur_vol * 2;
-            T *new_data = allocator.alloc(new_vol);
-            memcpy(new_data, arr, cur_size * sizeof(T));
+        }
+        else if (cur_size == cur_vol) {
+            T *new_arr = allocator.alloc(2 * cur_vol);
+            for (std::size_t i = 0; i < cur_size; i++) {
+                allocator.construct(new_arr + i, std::move(arr[i])); ///1
+            }
+            allocator.destroy(arr, cur_size);
             allocator.finish(arr, cur_vol);
-            cur_vol = new_vol;
-            arr = new_data;
-            allocator.creat(arr + cur_size, forward<Arg>(val));
-            cur_size++;
+            arr = new_arr;
+            allocator.construct(arr + cur_size++, std::move(value));
+            cur_vol *= 2;
+        }
+        else if (cur_size < cur_vol) {
+            allocator.construct(arr + cur_size++, std::move(value));
         }
     }
+
 
     void pop_back()
     {

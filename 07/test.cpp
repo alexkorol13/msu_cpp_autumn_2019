@@ -8,7 +8,8 @@
 
 #include "Vector.h"
 
-// this code was opied from https://github.com/mtrempoltsev/msu_cpp_lectures/blob/master/homework/07/test.cpp
+// this code was copied from https://github.com/mtrempoltsev/msu_cpp_lectures/blob/master/homework/07/test.cpp
+
 template <class T>
 int benchmark(T& c)
 {
@@ -170,7 +171,7 @@ int main()
         checkTrue(v.empty());
         checkEqual(v.size(), 0);
 
-        v.push_back(1);
+        v.push_back(1); ///2
 
         checkTrue(!v.empty());
         checkEqual(v.size(), 1);
